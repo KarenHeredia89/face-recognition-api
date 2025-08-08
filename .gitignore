@@ -1,2 +1,8 @@
 # dependencies
 /node_modules
+
+# compiled files and folders
+/dist
+
+# misc
+.env
