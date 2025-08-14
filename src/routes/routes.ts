@@ -3,7 +3,10 @@ import { Knex } from "knex";
 import bcrypt from "bcrypt-nodejs";
 
 import { handleSignin, handleRegister } from "../controllers/auth.controller";
-import { handleProfileGet } from "../controllers/user.controller";
+import {
+  handleProfileGet,
+  handleProfileUpdate,
+} from "../controllers/user.controller";
 import { handleImage, handleApiCall } from "../controllers/image.controller";
 
 const routes = (app: Express, db: Knex) => {
@@ -11,6 +14,7 @@ const routes = (app: Express, db: Knex) => {
   app.post("/register", handleRegister(db, bcrypt));
 
   app.get("/profile/:id", handleProfileGet(db));
+  app.post("/profile/:id", handleProfileUpdate(db));
 
   app.put("/image", handleImage(db));
   app.post("/imageurl", handleApiCall);

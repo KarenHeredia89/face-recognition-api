@@ -46,7 +46,8 @@ export const registerUser = async (
   email: string,
   passwordFromReq: string
 ): Promise<User | null> => {
-  const hash = bcrypt.hashSync(passwordFromReq);
+  const salt = bcrypt.genSaltSync(10);
+  const hash = bcrypt.hashSync(passwordFromReq, salt);
 
   try {
     const registeredUser = await db.transaction(async (trx) => {
@@ -63,25 +64,19 @@ export const registerUser = async (
 
       const loginEmail = loginEmails[0].email;
 
-      const [userId] = await trx("users")
+      const newUsers = await trx("users")
         .insert({
           name: name,
           email: loginEmail,
           joined: new Date(),
         })
-        .returning("id");
+        .returning("*");
 
-      if (!userId) {
+      if (!newUsers || newUsers.length === 0) {
         throw new Error("Failed to insert new user.");
       }
 
-      const registeredUser = await trx("users").where("id", userId).first();
-
-      if (!registeredUser) {
-        throw new Error("Failed to fetch user after registration.");
-      }
-
-      return registeredUser;
+      return newUsers[0];
     });
 
     return registeredUser;

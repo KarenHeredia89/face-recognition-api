@@ -8,11 +8,11 @@ import "dotenv/config";
 const db = knex({
   client: "pg",
   connection: {
-    host: process.env.DATABASE_HOST,
-    port: 5432,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PW,
-    database: process.env.DATABASE_DB,
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT || "5432", 10),
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
   },
 });
 

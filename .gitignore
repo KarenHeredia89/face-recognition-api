@@ -3,6 +3,7 @@
 
 # compiled files and folders
 /dist
+/db
 
 # misc
 .env

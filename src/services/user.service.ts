@@ -6,6 +6,7 @@ interface User {
   email: string;
   entries: number;
   joined: Date;
+  age?: number;
 }
 
 export const getUserById = async (
@@ -21,6 +22,28 @@ export const getUserById = async (
     return null;
   } catch (error) {
     console.error("Error getting user by ID:", error);
+    return null;
+  }
+};
+
+export const updateUserById = async (
+  db: Knex,
+  id: string,
+  name: string,
+  age: number
+): Promise<User | null> => {
+  try {
+    const users = await db("users")
+      .where({ id })
+      .update({ name })
+      .returning("*");
+
+    if (users.length > 0) {
+      return users[0];
+    }
+    return null;
+  } catch (error) {
+    console.error("Error updating user by ID:", error);
     return null;
   }
 };
