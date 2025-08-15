@@ -1,5 +1,6 @@
 import { Knex } from "knex";
 import bcrypt from "bcrypt-nodejs";
+import jwt from "jsonwebtoken";
 
 interface User {
   id: number;
@@ -8,6 +9,8 @@ interface User {
   entries: number;
   joined: Date;
 }
+
+const jwtSecret = process.env.JWT_SECRET;
 
 export const getAuthUser = async (
   db: Knex,
@@ -34,7 +37,13 @@ export const getAuthUser = async (
       return null;
     }
 
-    return user[0];
+    if (!jwtSecret) {
+      throw new Error("JWT secret is not defined");
+    }
+
+    const token = jwt.sign({ id: user[0].id }, jwtSecret, { expiresIn: "1h" });
+
+    return { user: user[0], token };
   } catch (error) {
     return null;
   }
@@ -45,7 +54,7 @@ export const registerUser = async (
   name: string,
   email: string,
   passwordFromReq: string
-): Promise<User | null> => {
+): Promise<{ user: User; token: string } | null> => {
   const salt = bcrypt.genSaltSync(10);
   const hash = bcrypt.hashSync(passwordFromReq, salt);
 
@@ -78,6 +87,18 @@ export const registerUser = async (
 
       return newUsers[0];
     });
+
+    if (registeredUser) {
+      if (!jwtSecret) {
+        throw new Error("JWT secret is not defined");
+      }
+
+      const token = jwt.sign({ id: registeredUser.id }, jwtSecret, {
+        expiresIn: "1h",
+      });
+
+      return { user: registeredUser, token };
+    }
 
     return registeredUser;
   } catch (error) {
