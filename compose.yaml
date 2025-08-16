@@ -53,8 +53,17 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  redis:
+    image: redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
 volumes:
   db-data:
+  redis-data:
 secrets:
   db-password:
     file: db/password.txt
