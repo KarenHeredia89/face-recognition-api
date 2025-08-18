@@ -1,4 +1,5 @@
 import { Knex } from "knex";
+import { findUserById, updateUserName } from "../repositories/user.repository";
 
 interface User {
   id: number;
@@ -6,7 +7,6 @@ interface User {
   email: string;
   entries: number;
   joined: Date;
-  age?: number;
 }
 
 export const getUserById = async (
@@ -14,12 +14,8 @@ export const getUserById = async (
   id: string
 ): Promise<User | null> => {
   try {
-    const users = await db.select("*").from("users").where({ id });
-
-    if (users.length) {
-      return users[0];
-    }
-    return null;
+    const user = await findUserById(db, id);
+    return user || null;
   } catch (error) {
     console.error("Error getting user by ID:", error);
     return null;
@@ -29,19 +25,11 @@ export const getUserById = async (
 export const updateUserById = async (
   db: Knex,
   id: string,
-  name: string,
-  age: number
+  name: string
 ): Promise<User | null> => {
   try {
-    const users = await db("users")
-      .where({ id })
-      .update({ name })
-      .returning("*");
-
-    if (users.length > 0) {
-      return users[0];
-    }
-    return null;
+    const [updatedUser] = await updateUserName(db, id, name);
+    return updatedUser || null;
   } catch (error) {
     console.error("Error updating user by ID:", error);
     return null;

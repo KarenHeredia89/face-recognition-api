@@ -1,5 +1,6 @@
-const { ClarifaiStub, grpc } = require("clarifai-nodejs-grpc"); // ClarifaiStub won't work with import
 import { Knex } from "knex";
+import { incrementUserEntries } from "../repositories/image.repository";
+const { ClarifaiStub, grpc } = require("clarifai-nodejs-grpc"); // ClarifaiStub won't work with import
 
 export const callClarifaiApi = async (imageUrl: string) => {
   const PAT = process.env.API_CLARIFAI;
@@ -59,10 +60,7 @@ export const incrementEntries = async (
   id: number
 ): Promise<number | null> => {
   try {
-    const entries = await db("users")
-      .where("id", "=", id)
-      .increment("entries", 1)
-      .returning("entries");
+    const entries = await incrementUserEntries(db, id);
 
     if (entries.length) {
       return entries[0].entries;

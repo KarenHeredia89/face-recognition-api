@@ -1,37 +1,41 @@
 import { Request, Response } from "express";
 import { Knex } from "knex";
 import { getAuthUser, registerUser } from "../services/auth.service";
+import { registerUserSchema, loginUserSchema } from "../schemas/user.schemas";
 
-export const handleSignin =
-  (db: Knex, bcrypt: any) => async (req: Request, res: Response) => {
-    const { email, password } = req.body;
+const handleSignin = (db: Knex) => async (req: Request, res: Response) => {
+  const validation = loginUserSchema.safeParse(req.body);
 
-    if (!email || !password) {
-      return res.status(400).json("incorrect form submission");
-    }
+  if (!validation.success) {
+    return res.status(400).json({ errors: validation.error.issues });
+  }
+  const { email, password } = validation.data;
 
-    const user = await getAuthUser(db, email, password);
+  const user = await getAuthUser(db, email, password);
 
-    if (user) {
-      res.json(user);
-    } else {
-      res.status(400).json("wrong credentials");
-    }
-  };
+  if (user) {
+    res.json(user);
+  } else {
+    res.status(400).json({ message: "Wrong credentials" });
+  }
+};
 
-export const handleRegister =
-  (db: Knex, bcrypt: any) => async (req: Request, res: Response) => {
-    const { email, password, name } = req.body;
+const handleRegister = (db: Knex) => async (req: Request, res: Response) => {
+  const validation = registerUserSchema.safeParse(req.body);
 
-    if (!email || !password || !name) {
-      return res.status(400).json("incorrect form submission");
-    }
+  if (!validation.success) {
+    return res.status(400).json({ errors: validation.error.issues });
+  }
 
-    const newUser = await registerUser(db, name, email, password);
+  const { email, password, name } = validation.data;
 
-    if (newUser) {
-      res.json(newUser);
-    } else {
-      res.status(400).json("unable to register");
-    }
-  };
+  const newUser = await registerUser(db, name, email, password);
+
+  if (newUser) {
+    res.json(newUser);
+  } else {
+    res.status(400).json({ message: "Unable to register" });
+  }
+};
+
+export { handleSignin, handleRegister };

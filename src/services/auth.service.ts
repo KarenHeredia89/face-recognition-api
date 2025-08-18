@@ -1,6 +1,9 @@
 import { Knex } from "knex";
 import bcrypt from "bcrypt-nodejs";
 import jwt from "jsonwebtoken";
+import redisClient from "../config/redisClient";
+import { findUserByMail, insertUser } from "../repositories/users.repository";
+import { findLoginByEmail, insertLogin } from "../repositories/auth.repository";
 
 interface User {
   id: number;
@@ -11,6 +14,7 @@ interface User {
 }
 
 const jwtSecret = process.env.JWT_SECRET;
+const expirationInSeconds = 3600;
 
 export const getAuthUser = async (
   db: Knex,
@@ -18,33 +22,35 @@ export const getAuthUser = async (
   passwordFromReq: string
 ) => {
   try {
-    const data = await db
-      .select("email", "hash")
-      .from("login")
-      .where("email", "=", email);
+    const loginData = await findLoginByEmail(db, email);
 
-    if (!data || data.length === 0) {
-      return null;
-    }
+    if (!loginData) return null;
 
-    const isValid = bcrypt.compareSync(passwordFromReq, data[0].hash);
-    if (!isValid) {
-      return null;
-    }
+    const isValid = bcrypt.compareSync(passwordFromReq, loginData.hash);
 
-    const user = await db.select("*").from("users").where("email", "=", email);
-    if (!user || user.length === 0) {
-      return null;
-    }
+    if (!isValid) return null;
+
+    const user = await findUserByMail(db, email);
+
+    if (!user) return null;
 
     if (!jwtSecret) {
       throw new Error("JWT secret is not defined");
     }
 
-    const token = jwt.sign({ id: user[0].id }, jwtSecret, { expiresIn: "1h" });
+    const token = jwt.sign({ id: user.id }, jwtSecret, {
+      expiresIn: expirationInSeconds,
+    });
 
-    return { user: user[0], token };
+    await redisClient.setEx(
+      `token:${token}`,
+      expirationInSeconds,
+      user.id.toString()
+    );
+
+    return { user, token };
   } catch (error) {
+    console.error("Error authenticating user:", error);
     return null;
   }
 };
@@ -60,32 +66,19 @@ export const registerUser = async (
 
   try {
     const registeredUser = await db.transaction(async (trx) => {
-      const loginEmails = await trx("login")
-        .insert({
-          hash: hash,
-          email: email,
-        })
-        .returning("email");
+      const [loginEmail] = await insertLogin(trx, email, hash);
 
-      if (!loginEmails || loginEmails.length === 0) {
+      if (!loginEmail) {
         throw new Error("Failed to insert login email.");
       }
 
-      const loginEmail = loginEmails[0].email;
+      const [newUser] = await insertUser(trx, name, email);
 
-      const newUsers = await trx("users")
-        .insert({
-          name: name,
-          email: loginEmail,
-          joined: new Date(),
-        })
-        .returning("*");
-
-      if (!newUsers || newUsers.length === 0) {
+      if (!newUser) {
         throw new Error("Failed to insert new user.");
       }
 
-      return newUsers[0];
+      return newUser;
     });
 
     if (registeredUser) {
@@ -94,8 +87,14 @@ export const registerUser = async (
       }
 
       const token = jwt.sign({ id: registeredUser.id }, jwtSecret, {
-        expiresIn: "1h",
+        expiresIn: expirationInSeconds,
       });
+
+      await redisClient.setEx(
+        `token:${token}`,
+        expirationInSeconds,
+        registeredUser.id.toString()
+      );
 
       return { user: registeredUser, token };
     }
