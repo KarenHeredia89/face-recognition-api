@@ -8,6 +8,8 @@ import "dotenv/config";
 const db = knex({
   client: "pg",
   connection: {
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT || "5432", 10),
     user: process.env.DB_USER,
